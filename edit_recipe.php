@@ -71,17 +71,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
+    // Validate ingredients
+    $ingredients = '';
+    foreach ($_POST['ingredient'] as $ingredient) {
+        if (!empty(trim($ingredient))) {
+            $ingredients .= trim($ingredient) . "\n";
+        }
+    }
+
     // Check for input errors before updating the recipe
     if (empty($name_err) && empty($description_err) && empty($instructions_err) && empty($image_err)) {
 
         // Update the recipe in the database
-        $sql = 'UPDATE recipes SET name = ?, description = ?, instructions = ?, image = ? WHERE id = ?';
+        $sql = 'UPDATE recipes SET name = ?, description = ?, instructions = ?, image = ?, ingredients = ? WHERE id = ?';
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('ssssi', $param_name, $param_description, $param_instructions, $param_image, $param_id);
+
+        $stmt->bindParam(1, $param_name, PDO::PARAM_STR);
+        $stmt->bindParam(2, $param_description, PDO::PARAM_STR);
+        $stmt->bindParam(3, $param_instructions, PDO::PARAM_STR);
+        $stmt->bindParam(4, $param_image, PDO::PARAM_STR);
+        $stmt->bindParam(5, $param_ingredients, PDO::PARAM_STR);
+        $stmt->bindParam(6, $param_id, PDO::PARAM_INT);
+
         $param_name = $name;
         $param_description = $description;
         $param_instructions = $instructions;
         $param_image = $image;
+        $param_ingredients = $ingredients;
         $param_id = $_GET['id'];
 
         if ($stmt->execute()) {
@@ -93,34 +109,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Close statement
-        $stmt->close();
+        unset($stmt);
     }
 
     // Close connection
-    $conn->close();
+    unset($conn);
 } else {
     // Retrieve the existing recipe data
-    $sql = 'SELECT name, description, instructions, image FROM recipes WHERE id = ?';
+    $sql = 'SELECT name, description, instructions, image, ingredients FROM recipes WHERE id = ?';
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $param_id);
+    $stmt->bindParam(1, $param_id, PDO::PARAM_INT);
     $param_id = $_GET['id'];
     $stmt->execute();
-    $result = $stmt->get_result();
+    $recipe = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows == 1) {
-        $row = $result->fetch_assoc();
-        $name = $row['name'];
-        $description = $row['description'];
-        $instructions = $row['instructions'];
-        $image = $row['image'];
-    } else {
-        // Recipe not found, redirect to the home page
-        header('Location: index.php');
-        exit();
-    }
+    // Set the existing recipe data to the variables
+    $name = $recipe['name'];
+    $description = $recipe['description'];
+    $instructions = $recipe['instructions'];
+    $image = $recipe['image'];
+    $ingredients = explode("\n", $recipe['ingredients']);
 
     // Close statement
-    $stmt->close();
+    unset($stmt);
+
+    // Close connection
+    unset($conn);
 }
 ?>
 <!DOCTYPE html>

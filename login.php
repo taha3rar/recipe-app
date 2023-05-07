@@ -1,4 +1,6 @@
 <?php
+    session_start();
+
 // Include the necessary files
 require_once('includes/db.php');
 require_once('includes/functions.php');
@@ -10,17 +12,17 @@ if (is_logged_in()) {
 }
 
 // Define variables and set to empty values
-$email = $password = '';
-$email_err = $password_err = '';
+$username = $password = '';
+$username_err = $password_err = '';
 
 // Process form data when the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
-    // Validate email
-    if (empty(trim($_POST['email']))) {
-        $email_err = 'Please enter an email address.';
+    // Validate username
+    if (empty(trim($_POST['username']))) {
+        $username_err = 'Please enter a username.';
     } else {
-        $email = trim($_POST['email']);
+        $username = trim($_POST['username']);
     }
 
     // Validate password
@@ -31,21 +33,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Check for input errors before logging in
-    if (empty($email_err) && empty($password_err)) {
+    if (empty($username_err) && empty($password_err)) {
 
-        // Check if the email and password are correct
-        $sql = 'SELECT id, email, password FROM users WHERE email = ?';
+        // Check if the username and password are correct
+        $sql = 'SELECT id, username, password FROM users WHERE username = ?';
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('s', $param_email);
-        $param_email = $email;
+        $stmt->bindParam(1, $param_username, PDO::PARAM_STR);
+        $param_username = $username;
         $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($result->num_rows == 1) {
-            $row = $result->fetch_assoc();
-            if (password_verify($password, $row['password'])) {
+        if ($stmt->rowCount() == 1) {
+            if (password_verify($password, $result['password'])) {
                 // Password is correct, log in the user
-                $_SESSION['user_id'] = $row['id'];
+                $_SESSION['user_id'] = $result['id'];
+                $_SESSION['username'] = $result['username'];
+                session_write_close(); // write session data and close the session
                 header('Location: index.php');
                 exit();
             } else {
@@ -53,25 +56,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $password_err = 'The password you entered is not valid.';
             }
         } else {
-            // Email address not found, show error message
-            $email_err = 'No account found with that email address.';
+            // Username not found, show error message
+            $username_err = 'No account found with that username.';
         }
 
         // Close statement
-        $stmt->close();
+        $stmt->closeCursor();
     }
 
     // Close connection
-    $conn->close();
+    $conn = null;
+
 }
-?>
+
+    ?>
 
 <!DOCTYPE html>
 <html>
 
 <head>
     <title>Login - Recipe App</title>
-    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -86,12 +91,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
 
                     <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" name="email"
-                            class="form-control <?php echo (!empty($email_err)) ? 'is-invalid' : ''; ?>"
-                            value="<?php echo $email; ?>">
+                        <label>Username</label>
+                        <input type="text" name="username"
+                            class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>"
+                            value="<?php echo $username; ?>">
                         <span class="invalid-feedback">
-                            <?php echo $email_err; ?>
+                            <?php echo $username_err; ?>
                         </span>
                     </div>
 
@@ -114,9 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </div>
     </div>
-
-    <script src="js/jquery-3.6.0.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 

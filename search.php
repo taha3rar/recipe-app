@@ -1,6 +1,6 @@
 <?php
 // Include the database connection file
-include('includes/db.php');
+require_once('includes/db.php');
 
 // Get the user's ingredient input from the POST data
 $ingredients = $_POST['ingredients'];
@@ -9,28 +9,40 @@ $ingredients = $_POST['ingredients'];
 $ingredient_array = explode(',', $ingredients);
 
 // Build the SQL query to retrieve the matching recipes
-$sql = "SELECT r.id, r.title, r.instructions, GROUP_CONCAT(i.name SEPARATOR ', ') AS ingredients
+$sql = "SELECT r.id, r.name, r.instructions, GROUP_CONCAT(i.name SEPARATOR ', ') AS ingredients
         FROM recipes r
         JOIN recipe_ingredients ri ON r.id = ri.recipe_id
         JOIN ingredients i ON ri.ingredient_id = i.id
-        WHERE i.name IN ('" . implode("', '", $ingredient_array) . "')
+        WHERE i.name IN (" . rtrim(str_repeat('?,', count($ingredient_array)), ',') . ")
         GROUP BY r.id
         HAVING COUNT(DISTINCT i.id) = " . count($ingredient_array);
 
+// Prepare the SQL query
+$stmt = $conn->prepare($sql);
+
+// Bind the ingredient values to the prepared statement
+foreach ($ingredient_array as $key => $value) {
+    $stmt->bindValue(($key+1), $value, PDO::PARAM_STR);
+}
+
 // Execute the SQL query and retrieve the matching recipes
-$result = mysqli_query($conn, $sql);
-
-// Close the database connection
-mysqli_close($conn);
-
-// Output the matching recipes as a JSON object
+$stmt->execute();
 $recipes = array();
-while ($row = mysqli_fetch_assoc($result)) {
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $recipes[] = array(
-        'title' => $row['title'],
+        'name' => $row['name'],
         'instructions' => $row['instructions'],
         'ingredients' => $row['ingredients']
     );
 }
+
+// Close the database connection
+$conn = null;
+
+// Output the matching recipes as a JSON object
 echo json_encode($recipes);
+
+// Redirect to the recipes page
+header('Location: recipes.php');
+exit();
 ?>

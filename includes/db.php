@@ -1,15 +1,16 @@
 <?php
-// Define database connection variables
-$host = "localhost";
-$user = "username";
-$password = "password";
-$dbname = "database_name";
 
-// Create a new MySQLi object and connect to the database
-$conn = new mysqli($host, $user, $password, $dbname);
+$host = 'localhost';
+$dbname = 'recipe_app';
+$username = 'recipe_app';
+$password = 'password';
 
-// Check for connection errors
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    $conn = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    echo "Connection failed: " . $e->getMessage();
+    die();
 }
+
 ?>

@@ -10,28 +10,27 @@ if (is_logged_in()) {
 }
 
 // Define variables and set to empty values
-$email = $password = $confirm_password = '';
-$email_err = $password_err = $confirm_password_err = '';
+$username = $password = $confirm_password = '';
+$username_err = $password_err = $confirm_password_err = '';
 
 // Process form data when the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
-    // Validate email
-    if (empty(trim($_POST['email']))) {
-        $email_err = 'Please enter an email address.';
+    // Validate username
+    if (empty(trim($_POST['username']))) {
+        $username_err = 'Please enter a username.';
     } else {
-        // Check if the email address is already taken
-        $sql = 'SELECT id FROM users WHERE email = ?';
+        // Check if the username is already taken
+        $sql = 'SELECT id FROM users WHERE username = ?';
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('s', $param_email);
-        $param_email = trim($_POST['email']);
+        $param_username = trim($_POST['username']);
+        $stmt->bindParam(1, $param_username, PDO::PARAM_STR);
         $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows > 0) {
-            $email_err = 'This email address is already taken.';
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($result !== false) {
+            $username_err = 'This username is already taken.';
         } else {
-            $email = trim($_POST['email']);
+            $username = trim($_POST['username']);
         }
     }
 
@@ -55,16 +54,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Check for input errors before inserting into database
-    if (empty($email_err) && empty($password_err) && empty($confirm_password_err)) {
+    if (empty($username_err) && empty($password_err) && empty($confirm_password_err)) {
 
         // Hash the password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
         // Insert the new user into the database
-        $sql = 'INSERT INTO users (email, password) VALUES (?, ?)';
+        $sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('ss', $param_email, $param_password);
-        $param_email = $email;
+        $stmt->bindParam(1, $param_username, PDO::PARAM_STR);
+        $stmt->bindParam(2, $param_password, PDO::PARAM_STR);
+        $param_username = $username;
         $param_password = $hashed_password;
 
         if ($stmt->execute()) {
@@ -76,11 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Close statement
-        $stmt->close();
+        $stmt->closeCursor();
     }
 
     // Close connection
-    $conn->close();
+    $conn = null;
 }
 ?>
 
@@ -104,20 +104,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
 
                     <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" name="email"
-                            class="form-control <?php echo (!empty($email_err)) ? 'is-invalid' : ''; ?>"
-                            value="<?php echo $email; ?>">
+                        <label>Username</label>
+                        <input type="text" name="username" class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $username; ?>">
                         <span class="invalid-feedback">
-                            <?php echo $email_err; ?>
+                            <?php echo $username_err; ?>
                         </span>
                     </div>
 
                     <div class="form-group">
                         <label>Password</label>
-                        <input type="password" name="password"
-                            class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>"
-                            value="<?php echo $password; ?>">
+                        <input type="password" name="password" class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $password; ?>">
                         <span class="invalid-feedback">
                             <?php echo $password_err; ?>
                         </span>
@@ -125,9 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     <div class="form-group">
                         <label>Confirm Password</label>
-                        <input type="password" name="confirm_password"
-                            class="form-control <?php echo (!empty($confirm_password_err)) ? 'is-invalid' : ''; ?>"
-                            value="<?php echo $confirm_password; ?>">
+                        <input type="password" name="confirm_password" class="form-control <?php echo (!empty($confirm_password_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $confirm_password; ?>">
                         <span class="invalid-feedback">
                             <?php echo $confirm_password_err; ?>
                         </span>

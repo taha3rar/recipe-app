@@ -1,5 +1,6 @@
 <?php
 // Include the necessary files
+session_start();
 require_once('includes/db.php');
 require_once('includes/functions.php');
 
@@ -9,11 +10,13 @@ $recipes = get_all_recipes();
 
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Recipe App</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
     <?php include('includes/header.php'); ?>
@@ -23,11 +26,16 @@ $recipes = get_all_recipes();
             <div class="col-md-8">
                 <h2>Recipes</h2>
 
+                <form action="search.php" method="POST" class="form-inline my-2 my-lg-0">
+                    <input class="form-control mr-sm-2" type="text" placeholder="Search recipes by ingredients" name="ingredients" >
+                    <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+                </form>
+
                 <?php if (count($recipes) > 0) { ?>
                     <ul class="list-group">
                         <?php foreach ($recipes as $recipe) { ?>
                             <li class="list-group-item">
-                                <a href="recipes.php?id=<?php echo $recipe['id']; ?>"><?php echo $recipe['title']; ?></a>
+                                <a href="recipes.php?id=<?php echo $recipe['id']; ?>"><?php echo $recipe['name']; ?></a>
                             </li>
                         <?php } ?>
                     </ul>
@@ -49,4 +57,5 @@ $recipes = get_all_recipes();
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="js/script.js"></script>
 </body>
+
 </html>

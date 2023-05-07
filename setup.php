@@ -1,59 +1,53 @@
 <?php
-// Define database connection variables
-$host = "localhost";
-$user = "root";
-$password = "";
-$dbname = "recipe_app";
 
-// Create a new MySQLi object and connect to the database
-$conn = new mysqli($host, $user, $password);
+require_once('includes/db.php');
 
-// Check for connection errors
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS users (
+            id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL
+        );
+    ");
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS recipes (
+            id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id INT(11) UNSIGNED NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            instructions TEXT NOT NULL,
+            image VARCHAR(255),
+            video VARCHAR(255),
+            ingredients VARCHAR(255) NOT NULL,
+            rating INT(11) UNSIGNED,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+    ");
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS ingredients (
+            id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE
+        );
+    ");
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS recipe_ingredients (
+            recipe_id INT(11) UNSIGNED NOT NULL,
+            ingredient_id INT(11) UNSIGNED NOT NULL,
+            FOREIGN KEY (recipe_id) REFERENCES recipes(id),
+            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
+        );
+    ");
+
+} catch(PDOException $e) {
+    echo "Error creating tables: " . $e->getMessage();
+    die();
 }
 
-// Create the database if it doesn't already exist
-$sql = "CREATE DATABASE IF NOT EXISTS $dbname";
-if ($conn->query($sql) === FALSE) {
-    die("Error creating database: " . $conn->error);
-}
+echo "Tables created successfully";
 
-// Select the database
-$conn->select_db($dbname);
-
-// Create the "recipes" table
-$sql = "CREATE TABLE IF NOT EXISTS recipes (
-    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    instructions TEXT NOT NULL
-)";
-if ($conn->query($sql) === FALSE) {
-    die("Error creating table: " . $conn->error);
-}
-
-// Create the "ingredients" table
-$sql = "CREATE TABLE IF NOT EXISTS ingredients (
-    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL
-)";
-if ($conn->query($sql) === FALSE) {
-    die("Error creating table: " . $conn->error);
-}
-
-// Create the "recipe_ingredients" table
-$sql = "CREATE TABLE IF NOT EXISTS recipe_ingredients (
-    recipe_id INT(11) UNSIGNED,
-    ingredient_id INT(11) UNSIGNED,
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
-    FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
-)";
-if ($conn->query($sql) === FALSE) {
-    die("Error creating table: " . $conn->error);
-}
-
-// Close the database connection
-$conn->close();
-
-echo "Database setup complete!";
 ?>
