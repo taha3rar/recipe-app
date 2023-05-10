@@ -5,16 +5,40 @@ require_once('includes/functions.php');
 
 // Check if the user is already logged in
 if (is_logged_in()) {
-    header('Location: index.php');
+    header('Location: home.php');
     exit();
 }
 
 // Define variables and set to empty values
-$username = $password = $confirm_password = '';
-$username_err = $password_err = $confirm_password_err = '';
+$username = $password = $confirm_password = $name = $age = $profile_pic = '';
+$username_err = $password_err = $confirm_password_err = $name_err = $age_err = $profile_pic_err = '';
+$allowed_types = ['image/jpg', 'image/jpeg', 'image/png'];
+$base64_encoded = '';
 
 // Process form data when the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
+    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0 && !empty($_FILES['profile_pic'])) {
+        // Check if the file size is less than or equal to 1MB
+        if ($_FILES['profile_pic']['size'] <= 1048576) {
+
+            // Check if the file type is allowed
+            $file_ext = strtolower($_FILES['profile_pic']['type']);
+            if (in_array($file_ext, $allowed_types)) {
+                $file_contents = file_get_contents($_FILES['profile_pic']['tmp_name']);
+                $profile_pic_err = '';
+                $base64_encoded = base64_encode($file_contents);
+                // add data:image/png;base64, to the beginning of the base64 string
+                $base64_encoded = 'data:' . $file_ext . ';base64,' . $base64_encoded;
+            } else {
+                $profile_pic_err = 'File type not allowed. Allowed types: ' . implode(', ', $allowed_types) . '.';
+            }
+        } else {
+            $profile_pic_err = 'File size must be less than or equal to 1MB.';
+        }
+    } else {
+        $profile_pic_err = 'Please add a profile picture.';
+    }
 
     // Validate username
     if (empty(trim($_POST['username']))) {
@@ -43,6 +67,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $password = trim($_POST['password']);
     }
 
+    if (empty(trim($_POST['name']))) {
+        $name_err = 'Please enter your name.';
+    } else {
+        $name = trim($_POST['name']);
+    }
+
+    // Validate age
+    if (empty(trim($_POST['age']))) {
+        $age_err = 'Please enter your age.';
+    } else {
+        $age = trim($_POST['age']);
+    }
+
+
+
     // Validate confirm password
     if (empty(trim($_POST['confirm_password']))) {
         $confirm_password_err = 'Please confirm password.';
@@ -54,19 +93,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Check for input errors before inserting into database
-    if (empty($username_err) && empty($password_err) && empty($confirm_password_err)) {
-
+    if (empty($username_err) && empty($password_err) && empty($confirm_password_err) && empty($name_err) && empty($age_err) && empty($profile_pic_err)) {
+        print("woo");;
         // Hash the password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
         // Insert the new user into the database
-        $sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
+        $sql = 'INSERT INTO users (username, password, name, age, profile_pic) VALUES (?, ?, ?, ?, ?)';
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(1, $param_username, PDO::PARAM_STR);
         $stmt->bindParam(2, $param_password, PDO::PARAM_STR);
+        $stmt->bindParam(3, $param_name, PDO::PARAM_STR);
+        $stmt->bindParam(4, $param_age, PDO::PARAM_STR);
+        $stmt->bindParam(5, $base64_encoded, PDO::PARAM_STR);
+
         $param_username = $username;
         $param_password = $hashed_password;
-
+        $param_name = $name;
+        $param_age = $age;
         if ($stmt->execute()) {
             // Registration successful, redirect to login page
             header('Location: login.php');
@@ -98,11 +142,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php include('includes/header.php'); ?>
 
     <div class="container mt-3">
-        <div class="row">
-            <div class="col-md-6">
-                <h2>Register</h2>
-                <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
+        <div class="row justify-content-center pt-5">
+            <div class="col-md-6 p-4 shadow">
+                <p>
 
+                    <?php echo $base64_encoded ?>
+                </p>
+                <h2>Register</h2>
+                <form enctype="multipart/form-data" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="name" class="form-control <?php echo (!empty($name_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $name; ?>">
+                        <span class="invalid-feedback">
+                            <?php echo $name_err; ?>
+                        </span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" name="age" class="form-control <?php echo (!empty($age_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $age; ?>">
+                        <span class="invalid-feedback">
+                            <?php echo $age_err; ?>
+                        </span>
+                    </div>
                     <div class="form-group">
                         <label>Username</label>
                         <input type="text" name="username" class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $username; ?>">
@@ -128,6 +190,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
 
                     <div class="form-group">
+                        <label>Profile Picture</label>
+                        <input type="file" name="profile_pic" class="form-control-file">
+                        <span class="invalid-feedback d-block">
+                            <?php echo $profile_pic_err; ?>
+                        </span>
+                    </div>
+
+                    <div class="form-group">
                         <input type="submit" value="Register" class="btn btn-primary">
                         <input type="reset" value="Reset" class="btn btn-secondary ml-2">
                     </div>
@@ -139,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 
-    <script src="js/jquery-3.6.0.min.js"></script>
+    <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/script.js"></script>
 </body>

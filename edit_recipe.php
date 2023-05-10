@@ -11,13 +11,13 @@ if (!is_logged_in()) {
 
 // Check if the recipe ID is specified in the URL
 if (!isset($_GET['id'])) {
-    header('Location: index.php');
+    header('Location: home.php');
     exit();
 }
 
 // Check if the recipe belongs to the logged-in user
 if (!is_recipe_owner($_GET['id'])) {
-    header('Location: index.php');
+    header('Location: home.php');
     exit();
 }
 

@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 ?>
 
@@ -10,13 +10,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipe App</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
     <nav class="navbar navbar-expand-md navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="index.php">Recipe App</a>
+            <a class="main-color navbar-brand d-flex align-items-center" href="home.php">
+                <img class="logo mr-2" src="./images/logo.svg" />
+                Dessfits</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -28,6 +29,15 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="logout.php">Logout</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="my-recipes.php">My Recipes</a>
+                        </li>
+                        <li class="nav-item">
+
+                                <a class="nav-link d-flex " href="my-recipes.php"><?php echo $_SESSION['name'] ?>
+                                    <img class="circle object-fit-cover ml-2" <?php echo 'src="' . ($_SESSION['profile_pic']) . '"'; ?> width="25" height="25" alt="">
+                                </a>
                         </li>
                     <?php } else { ?>
                         <li class="nav-item">
@@ -41,4 +51,5 @@
             </div>
         </div>
     </nav>
+    <link rel="stylesheet" href="css/style.css">
 </body>

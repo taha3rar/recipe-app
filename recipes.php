@@ -4,28 +4,35 @@
 session_start();
 require_once('includes/db.php');
 // Get the user's ingredient input from the POST data
-$ingredients = isset($_POST['ingredients']) ? $_POST['ingredients'] : array();
-print_r($_POST);
+$ingredients_string = $_POST['ingredients'];
+$ingredients = explode(',', $ingredients_string);
 
+$conditions = array();
+$params = array();
+if (count($ingredients) == 1) {
+    $params[":name"] = strtolower(trim($ingredients[0]));
+    $conditions[] = "LOWER(name) LIKE :name";
+} else {
+    foreach ($ingredients as $i => $ingredient) {
+        $params[":ingredient$i"] = strtolower(trim($ingredient));
+        $conditions[] = "LOWER(ingredients) LIKE :ingredient$i";
+    }
+}
+
+$conditions_query = implode(' OR ', $conditions);
 // Build the SQL query to retrieve the matching recipes
-$sql = "SELECT r.id, r.name, r.instructions, GROUP_CONCAT(i.name SEPARATOR ', ') AS ingredients
-        FROM recipes r
-        JOIN ingredients i ON ri.ingredient_id = i.id
-        WHERE i.name IN (" . rtrim(str_repeat('?,', count($ingredients)), ',') . ")
-        GROUP BY r.id
-        HAVING COUNT(DISTINCT i.id) = " . count($ingredients);
+$sql = "SELECT id, name, ingredients
+        FROM recipes
+        WHERE $conditions_query";
 
 // Prepare the SQL query
 $stmt = $conn->prepare($sql);
+$stmt->execute($params);
 
-// Bind the ingredient values to the prepared statement
-foreach ($ingredients as $key => $value) {
-    $stmt->bindValue(($key + 1), $value, PDO::PARAM_STR);
-}
 
 // Execute the SQL query and retrieve the matching recipes
-$stmt->execute();
 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+var_dump($result);    
 
 // Close the database connection
 $conn = null;
@@ -35,7 +42,7 @@ $recipes = array();
 foreach ($result as $row) {
     $recipes[] = array(
         'name' => $row['name'],
-        'instructions' => $row['instructions'],
+        'id' => $row['id'],
         'ingredients' => $row['ingredients']
     );
 }
@@ -69,7 +76,7 @@ echo json_encode($recipes);
             <p>No matching recipes found. Please try again.</p>
         <?php } ?>
     </div>
-    <script src="js/jquery-3.6.0.min.js"></script>
+    <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
 </body>
 

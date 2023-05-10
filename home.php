@@ -3,6 +3,11 @@
 session_start();
 require_once('includes/db.php');
 require_once('includes/functions.php');
+if (!isset($_SESSION['user_id'])) {
+    // Redirect to auth.php
+    header('Location: landing-page.php');
+    exit(); // Make sure to exit the script after the redirect
+  }
 
 // Get all recipes from the database
 $recipes = get_all_recipes();
@@ -12,7 +17,7 @@ $recipes = get_all_recipes();
 <html>
 
 <head>
-    <title>Recipe App</title>
+    <title>Dessfits</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -22,12 +27,13 @@ $recipes = get_all_recipes();
     <?php include('includes/header.php'); ?>
 
     <div class="container mt-3">
-        <div class="row">
+        <div <?php
+                if (isset($_SESSION['user_id'])) { ?> class="row">
             <div class="col-md-8">
                 <h2>Recipes</h2>
 
-                <form action="search.php" method="POST" class="form-inline my-2 my-lg-0">
-                    <input class="form-control mr-sm-2" type="text" placeholder="Search recipes by ingredients" name="ingredients" >
+                <form action="recipes.php" method="POST" class="form-inline my-2 my-lg-0">
+                    <input class="form-control mr-sm-2" type="text" placeholder="Search recipes by ingredients" name="ingredients">
                     <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
                 </form>
 
@@ -43,13 +49,9 @@ $recipes = get_all_recipes();
                     <p>No recipes found.</p>
                 <?php } ?>
             </div>
+        <?php } ?>
 
-            <?php if (is_logged_in()) { ?>
-                <div class="col-md-4">
-                    <h2>Create Recipe</h2>
-                    <p><a href="add_recipe.php" class="btn btn-primary">Create New Recipe</a></p>
-                </div>
-            <?php } ?>
+
         </div>
     </div>
 

@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 header('Location: recipe.php?id=' . $_GET['id']);
             } else {
                 // Recipe created successfully, redirect to the home page
-                header('Location: index.php');
+                header('Location: home.php');
             }
             exit();
         } else {
@@ -169,8 +169,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php include('includes/header.php'); ?>
 
     <div class="container mt-3">
-        <div class="row">
-            <div class="col-md-6">
+        <div class="row justify-content-center pt-5">
+            <div class="col-md-6 p-4 shadow">
                 <h2>Add Recipe</h2>
                 <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
 
@@ -217,7 +217,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <div class="input-group-append">
                                     <?php
 
-                                    echo $key;
                                     if (
                                         $key === count($ingredients) - 1
                                     ) { ?>
