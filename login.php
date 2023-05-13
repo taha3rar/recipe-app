@@ -50,6 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['username'] = $result['username'];
                 $_SESSION['name'] = $result['name'];
                 $_SESSION['profile_pic'] = $result['profile_pic'];
+                $coupons = [
+                    ['name' => 'Sultam 10%', 'code' => 'CODE1', 'recipes_amount' => 5, "image" => "sultam.jpg"],
+                    ['name' => 'Mahsaney hashmal 15%', 'code' => 'CODE2', 'recipes_amount' => 10, "image" => "hashmal.jfif"],
+                    ['name' => 'Home center 10%', 'code' => 'CODE3', 'recipes_amount' => 15, "image" => "homecenter.jfif"],
+                    ['name' => 'Fox Home 10%', 'code' => 'CODE4', 'recipes_amount' => 20, "image" => "fox-home.jpg"],
+                    ['name' => 'Wolt 20%', 'code' => 'CODE5', 'recipes_amount' => 25, "image" => "Wolt-Logo.jpg"]
+                ];
+                $_SESSION['coupons'] = $coupons;
                 session_write_close(); // write session data and close the session
                 header('Location: home.php');
                 exit();

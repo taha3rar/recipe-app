@@ -39,9 +39,15 @@ body {
   padding: 0;
   box-sizing: border-box;
 }
-
+.main-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
 .main-color {
   color: #137038 !important;
+}
+.bg-main {
+  background-color: #137038 !important;
 }
 .object-fit-cover {
   object-fit: cover;
@@ -49,3 +55,17 @@ body {
 .circle {
   border-radius: 50%;
 }
+.center {
+  display: flex;
+  justify-content: center;
+}
+.break-spaces {
+  white-space: break-spaces;
+}
+.container{
+  max-width: 1000px;
+}
+
+/* .card-body {
+  background: linear-gradient(167deg, #137033bb 40%, #0d4f2b50 100%);
+} */

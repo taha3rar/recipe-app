@@ -31,13 +31,17 @@
                             <a class="nav-link" href="logout.php">Logout</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="my-recipes.php">My Recipes</a>
+                            <a class="nav-link" href="recipes.php?<?php
+                                                                    echo 'id=' . $_SESSION['user_id'];
+                                                                    ?>">My Recipes</a>
                         </li>
                         <li class="nav-item">
 
-                                <a class="nav-link d-flex " href="my-recipes.php"><?php echo $_SESSION['name'] ?>
-                                    <img class="circle object-fit-cover ml-2" <?php echo 'src="' . ($_SESSION['profile_pic']) . '"'; ?> width="25" height="25" alt="">
-                                </a>
+                            <a class="nav-link d-flex " href="profile.php?<?php
+                                                                    echo 'id=' . $_SESSION['user_id'];
+                                                                    ?>"><?php echo $_SESSION['name'] ?>
+                                <img class="circle object-fit-cover ml-2" <?php echo 'src="' . ($_SESSION['profile_pic']) . '"'; ?> width="25" height="25" alt="">
+                            </a>
                         </li>
                     <?php } else { ?>
                         <li class="nav-item">

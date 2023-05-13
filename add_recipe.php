@@ -9,18 +9,46 @@ if (!is_logged_in()) {
     header('Location: login.php');
     exit();
 }
-
+$user_id = $_SESSION['user_id'];
+$coupons = $_SESSION['coupons'];
+$sql = "SELECT COUNT(*) AS recipe_count FROM recipes WHERE user_id = $user_id";
+$stmt = $conn->prepare($sql);
+$stmt->execute();
+$recipe_count = $stmt->fetch(PDO::FETCH_ASSOC)['recipe_count'];
 // Define variables and set to empty values
 $name = $description = '';
-$name_err = $description_err = '';
+$name_err = $description_err = $ingredients_err = $image_err = '';
 $description = '';
+$video = '';
 $instructions = '';
 $image = '';
 $ingredients = '';
 $recipe = array();
+$allowed_types = ['image/jpg', 'image/jpeg', 'image/png'];
+$base64_encoded = '';
 // Process form data when the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_FILES['image']) && $_FILES['image']['error'] == 0 && !empty($_FILES['image'])) {
+        // Check if the file size is less than or equal to 1MB
+        if ($_FILES['image']['size'] <= 1048576) {
 
+            // Check if the file type is allowed
+            $file_ext = strtolower($_FILES['image']['type']);
+            if (in_array($file_ext, $allowed_types)) {
+                $file_contents = file_get_contents($_FILES['image']['tmp_name']);
+                $image_err = '';
+                $base64_encoded = base64_encode($file_contents);
+                // add data:image/png;base64, to the beginning of the base64 string
+                $base64_encoded = 'data:' . $file_ext . ';base64,' . $base64_encoded;
+            } else {
+                $image_err = 'File type not allowed. Allowed types: ' . implode(', ', $allowed_types) . '.';
+            }
+        } else {
+            $image_err = 'File size must be less than or equal to 1MB.';
+        }
+    } else {
+        $image_err = 'Please add a profile picture.';
+    }
     // Validate name
     if (empty(trim($_POST['name']))) {
         $name_err = 'Please enter a recipe name.';
@@ -41,6 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         $instructions = trim($_POST['instructions']);
     }
+
+    $video = trim($_POST['video'] ?? '');
+
 
     // Validate image
     if (!empty($_FILES['image']['name'])) {
@@ -68,89 +99,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Validate ingredients
+    $ingredients = '';
     foreach ($_POST['ingredient'] as $ingredient) {
         if (!empty(trim($ingredient))) {
             $ingredients .= trim($ingredient) . "\n";
-            echo $ingredients;
         }
+    }
+    if (empty($ingredients)) {
+        $ingredients_err = 'Please enter recipe ingredients.';
     }
 
     // Check for input errors before updating the recipe
-    if (empty($name_err) && empty($description_err) && empty($instructions_err) && empty($image_err)) {
+    if (empty($name_err) && empty($description_err) && empty($instructions_err) && empty($image_err) && empty($ingredients_err)) {
         $param_name = $name;
         $param_description = $description;
         $param_instructions = $instructions;
         $param_image = $image;
         $param_ingredients = $ingredients;
-        if (isset($_GET['id'])) {
-            // Update the existing recipe in the database
-            $sql = 'UPDATE recipes SET name = ?, description = ?, instructions = ?, image = ?, ingredients = ? WHERE id = ?';
-            $stmt = $conn->prepare($sql);
+        $param_video = $video;
+        // Insert a new recipe into the database
+        $sql = 'INSERT INTO recipes (name, description, instructions, image, ingredients,user_id,video) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        $stmt = $conn->prepare($sql);
 
-            $stmt->bindParam(1, $param_name, PDO::PARAM_STR);
-            $stmt->bindParam(2, $param_description, PDO::PARAM_STR);
-            $stmt->bindParam(3, $param_instructions, PDO::PARAM_STR);
-            $stmt->bindParam(4, $param_image, PDO::PARAM_STR);
-            $stmt->bindParam(5, $param_ingredients, PDO::PARAM_STR);
-            $stmt->bindParam(6, $param_id, PDO::PARAM_INT);
-
-            $param_id = $_GET['id'];
-        } else {
-            // Insert a new recipe into the database
-            $sql = 'INSERT INTO recipes (name, description, instructions, image, ingredients,user_id) VALUES (?, ?, ?, ?, ?, ?)';
-            $stmt = $conn->prepare($sql);
-
-            $stmt->bindParam(1, $param_name, PDO::PARAM_STR);
-            $stmt->bindParam(2, $param_description, PDO::PARAM_STR);
-            $stmt->bindParam(3, $param_instructions, PDO::PARAM_STR);
-            $stmt->bindParam(4, $param_image, PDO::PARAM_STR);
-            $stmt->bindParam(5, $param_ingredients, PDO::PARAM_STR);
-            $stmt->bindParam(6, $_SESSION['user_id'], PDO::PARAM_INT);
-        }
-
-        // Bind parameters and execute the statement
-
+        $stmt->bindParam(1, $param_name, PDO::PARAM_STR);
+        $stmt->bindParam(2, $param_description, PDO::PARAM_STR);
+        $stmt->bindParam(3, $param_instructions, PDO::PARAM_STR);
+        $stmt->bindParam(4, $base64_encoded, PDO::PARAM_STR);
+        $stmt->bindParam(5, $param_ingredients, PDO::PARAM_STR);
+        $stmt->bindParam(6, $_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->bindParam(7, $param_video, PDO::PARAM_STR);
 
         if ($stmt->execute()) {
-            if (isset($_GET['id'])) {
-                // Recipe updated successfully, redirect to the recipe page
-                header('Location: recipe.php?id=' . $_GET['id']);
-            } else {
-                // Recipe created successfully, redirect to the home page
-                header('Location: home.php');
+            $recipe_count++;
+            $sql = 'UPDATE users SET points = points + 5 WHERE id = ?';
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+            $stmt->execute();
+            // find coupon with recipes_amount from $coupon array by recipe_count
+            $coupon = array_filter($coupons, function ($coupon) use ($recipe_count) {
+                return $coupon['recipes_amount'] == $recipe_count;
+            });
+            // if coupon exists, add it to the user 
+            if (!empty($coupon)) {
+                $coupon = array_values($coupon)[0];
+                $sql = 'INSERT INTO coupons (user_id, name, code, recipes_amount) VALUES (?, ?, ?, ?)';
+                $stmt = $conn->prepare($sql);
+                $code = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6);
+                $stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                $stmt->bindParam(2, $coupon['name'], PDO::PARAM_STR);
+                $stmt->bindParam(3, $code, PDO::PARAM_STR);
+                $stmt->bindParam(4, $coupon['recipes_amount'], PDO::PARAM_INT);
+                $stmt->execute();
+                $message =  'You have earned a coupon for ' . $coupon['recipes_amount'] . ' recipes!, check your coupons in the home page.';
+                echo "<script type='text/javascript'>alert('$message'); window.location.href='home.php'</script>";
             }
-            exit();
         } else {
             echo 'Something went wrong. Please try again later.';
         }
 
-        // Close statement
         unset($stmt);
     }
 
-    // Close connection
-    unset($conn);
-} else if (isset($_GET['id'])) {
-    // ...
-    // Retrieve the existing recipe data
-    $sql = 'SELECT name, description, instructions, image, ingredients FROM recipes WHERE id = ?';
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(1, $param_id, PDO::PARAM_INT);
-    $param_id = $_GET['id'];
-    $stmt->execute();
-    $recipe = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Set the existing recipe data to the variables
-    $name = $recipe['name'];
-    $description = $recipe['description'];
-    $instructions = $recipe['instructions'];
-    $image = $recipe['image'];
-    $ingredients = explode("\n", $recipe['ingredients']);
-
-    // Close statement
-    unset($stmt);
-
-    // Close connection
     unset($conn);
 }
 ?>
@@ -167,12 +176,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
 
     <?php include('includes/header.php'); ?>
-
     <div class="container mt-3">
         <div class="row justify-content-center pt-5">
             <div class="col-md-6 p-4 shadow">
                 <h2>Add Recipe</h2>
-                <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
+                <form enctype="multipart/form-data" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
 
                     <div class="form-group">
                         <label>Name</label>
@@ -195,6 +203,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <span class="invalid-feedback">
                             <?php echo $instructions_err; ?>
                         </span>
+                    </div>
+                    <div class="form-group">
+                        <label>Video</label>
+                        <textarea placeholder="Youtube link" name="video" class="form-control"></textarea>
+
                     </div>
                     <div class="form-group">
                         <label>Ingredients</label>
@@ -228,11 +241,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                         <?php } ?>
 
-
+                        <span class="invalid-feedback d-block">
+                            <?php echo $ingredients_err; ?>
+                        </span>
                     </div>
+                    <!-- <div class="form-group">
+                        <label>Ingredients</label>
+
+
+                        <div class="input-group mb-2">
+                            <input type="text" name="ingredient[]" class="form-control" >
+                            <div class="input-group-append">
+
+                                <button class="btn btn-secondary add-ingredient" type="button">Add</button>
+                            </div>
+                        </div>
+
+                        <span class="invalid-feedback d-block">
+                            <?php echo $ingredients_err; ?>
+                        </span>
+                    </div> -->
                     <div class="form-group">
                         <label>Image</label>
                         <input type="file" name="image" class="form-control-file">
+                        <span class="invalid-feedback d-block">
+                            <?php echo $image_err; ?>
+                        </span>
                     </div>
                     <div class="form-group">
                         <input type="submit" value="Add Recipe" class="btn btn-primary">
@@ -250,24 +284,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $('form').on('click', '.add-ingredient', function() {
             var inputGroup = $(this).closest('.input-group');
             const newInput = inputGroup.clone();
+            inputGroup.append(
+                `<button class="btn btn-secondary remove-ingredient" type="button">Remove</button>`
+            )
+            inputGroup.find('.add-ingredient').remove();
             newInput.find('input').val('');
             inputGroup.after(newInput);
         });
-        // Add and remove input fields for ingredients
-        // console.log('here')
-        // // Add button click handler
-        // $('.add-ingredient').click(function() {
-        //     console.log('add')
-        //     var inputGroup = $(this).closest('.input-group');
-        //     const newInput = inputGroup.clone();
-        //     newInput.find('input').val('');
-        //     inputGroup.after(newInput);
-        // });
+        $('form').on('click', '.remove-ingredient', function() {
+            $(this).closest('.input-group').remove();
+        });
 
-        // // Remove button click handler
-        // $('.remove-ingredient').click(function() {
-        //     $(this).closest('.input-group').remove();
-        // });
+        //listen to changes in the form, and update the preview
     </script>
 
 </body>

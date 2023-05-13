@@ -11,12 +11,12 @@ try {
 
 
 
-    require_once('includes/db.php');
 
     try {
         $conn->exec("
         CREATE TABLE IF NOT EXISTS users (
             id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            points INT(11) UNSIGNED NOT NULL DEFAULT 0,
             username VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             name VARCHAR(255) NOT NULL,
@@ -28,16 +28,48 @@ try {
     ");
 
         $conn->exec("
+        CREATE TABLE IF NOT EXISTS followers  (
+            follower_id INT(11) UNSIGNED NOT NULL,
+            followee_id INT(11) UNSIGNED NOT NULL,
+            FOREIGN KEY (followee_id) REFERENCES users(id),
+            FOREIGN KEY (follower_id) REFERENCES users(id)
+        );
+    ");
+
+        $conn->exec("
+        CREATE TABLE IF NOT EXISTS likes  (
+            id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            recipe_id INT(11) UNSIGNED NOT NULL,
+            user_id INT(11) UNSIGNED NOT NULL,
+            FOREIGN KEY (recipe_id) REFERENCES recipes(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+    ");
+
+        $conn->exec("
+        CREATE TABLE IF NOT EXISTS coupons (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255),
+            user_id INT(11) UNSIGNED NOT NULL,
+            code VARCHAR(255),
+            recipes_amount INT(11) UNSIGNED NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+    ");
+
+
+
+
+        $conn->exec("
         CREATE TABLE IF NOT EXISTS recipes (
             id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id INT(11) UNSIGNED NOT NULL,
             name VARCHAR(255) NOT NULL,
             description TEXT NOT NULL,
             instructions TEXT NOT NULL,
-            image VARCHAR(255),
+            image VARCHAR(65535),
             video VARCHAR(255),
             ingredients VARCHAR(255) NOT NULL,
-            rating INT(11) UNSIGNED,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
@@ -47,15 +79,6 @@ try {
         CREATE TABLE IF NOT EXISTS ingredients (
             id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL UNIQUE
-        );
-    ");
-
-        $conn->exec("
-        CREATE TABLE IF NOT EXISTS recipe_ingredients (
-            recipe_id INT(11) UNSIGNED NOT NULL,
-            ingredient_id INT(11) UNSIGNED NOT NULL,
-            FOREIGN KEY (recipe_id) REFERENCES recipes(id),
-            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
         );
     ");
     } catch (PDOException $e) {
